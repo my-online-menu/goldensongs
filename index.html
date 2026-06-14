@@ -196,61 +196,13 @@
   .foot button.t { flex:1; }
   input[type=file] { display:none; }
 
-  /* ---- Mobile / responsive ---- */
-  @media (max-width: 520px) {
-    body {
-      padding: 0;
-      align-items: stretch;
-      background: #000;
-    }
-    #player {
-      width: 100%;
-      min-height: 100dvh;
-      border-radius: 0;
-      border: none;
-      display: flex;
-      flex-direction: column;
-      /* keep safe-area clear of notches / home bar */
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    .titlebar { height: 30px; font-size: 12px; }
-    .main { padding: 12px; }
-
-    .display { padding: 10px 12px; gap: 4px 14px; }
-    .time { font-size: 38px; }
-    .track { font-size: 14px; }
-    .meta { font-size: 11px; }
-
-    /* stack visualizer above the knobs and let it breathe */
-    .viz-row { flex-direction: column; gap: 10px; }
-    canvas#viz { height: 64px; }
-    .sliders { flex-direction: row; gap: 14px; }
-    .slider-wrap { flex: 1; font-size: 11px; }
-    input[type=range] { max-width: none; height: 6px; }
-    input[type=range]::-webkit-slider-thumb { width: 14px; height: 22px; }
-    input[type=range]::-moz-range-thumb { width: 14px; height: 22px; }
-
-    .seek { height: 10px; margin: 14px 0 8px; }
-    .seek::-webkit-slider-thumb { width: 12px; height: 22px; }
-
-    /* bigger, finger-friendly transport */
-    .transport { gap: 6px; flex-wrap: wrap; }
-    button.t { height: 44px; min-width: 44px; font-size: 16px; flex: 1; }
-    #shuffle, #repeat { font-size: 12px; flex: 1 1 70px; }
-    .spacer { display: none; }
-
-    .pl-head { padding: 8px 10px; font-size: 12px; }
-    .pl-head input.search { font-size: 14px; padding: 6px 8px; }
-    /* playlist fills remaining height on tall phones */
-    .playlist { flex: 1; height: auto; min-height: 200px; font-size: 14px; }
-    .row { padding: 10px 10px; }
-    .row .num { width: 30px; }
-
-    .foot button.t { height: 44px; font-size: 12px; }
-  }
+  /* ---- Scale-to-fit wrapper (keeps identical look, just smaller) ---- */
+  #stage { transform-origin: top left; }
+  #stage #player { width: 460px; }
 </style>
 </head>
 <body>
+<div id="stage">
 <div id="player">
   <div class="titlebar">
     <span class="brand">BLACKAMP</span>
@@ -305,6 +257,7 @@
   </div>
   <input type="file" id="folderInput" webkitdirectory directory multiple>
   <input type="file" id="filesInput" accept="audio/mpeg,.mp3" multiple>
+</div>
 </div>
 
 <audio id="audio" crossorigin="anonymous"></audio>
@@ -578,8 +531,24 @@
   }
   draw();
 
+  // ---------- scale-to-fit (identical layout, shrunk for small screens) ----------
+  const stage = $('stage');
+  function fit() {
+    stage.style.transform = 'none';                 // measure natural size
+    sizeCanvas();                                    // size canvas at 1:1 for crispness
+    const w = player.offsetWidth, h = player.offsetHeight;
+    const avail = document.documentElement.clientWidth;
+    const scale = Math.min(1, (avail - 16) / w);     // never upscale past 1
+    stage.style.transform = 'scale(' + scale + ')';
+    stage.style.width  = (w * scale) + 'px';
+    stage.style.height = (h * scale) + 'px';
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+
   // ---------- boot ----------
   setTracks(fromManifest());
+  fit();
 })();
 </script>
 </body>
