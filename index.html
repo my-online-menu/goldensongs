@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
 <title>BlackAmp</title>
+<link rel="icon" type="image/png" href="Winamp-logo.svg.png">
+<link rel="apple-touch-icon" href="Winamp-logo.svg.png">
 <style>
   :root {
     --bg: #0a0a0a;
@@ -192,6 +195,59 @@
   .foot { display:flex; gap:6px; padding: 8px 10px 12px; }
   .foot button.t { flex:1; }
   input[type=file] { display:none; }
+
+  /* ---- Mobile / responsive ---- */
+  @media (max-width: 520px) {
+    body {
+      padding: 0;
+      align-items: stretch;
+      background: #000;
+    }
+    #player {
+      width: 100%;
+      min-height: 100dvh;
+      border-radius: 0;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      /* keep safe-area clear of notches / home bar */
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .titlebar { height: 30px; font-size: 12px; }
+    .main { padding: 12px; }
+
+    .display { padding: 10px 12px; gap: 4px 14px; }
+    .time { font-size: 38px; }
+    .track { font-size: 14px; }
+    .meta { font-size: 11px; }
+
+    /* stack visualizer above the knobs and let it breathe */
+    .viz-row { flex-direction: column; gap: 10px; }
+    canvas#viz { height: 64px; }
+    .sliders { flex-direction: row; gap: 14px; }
+    .slider-wrap { flex: 1; font-size: 11px; }
+    input[type=range] { max-width: none; height: 6px; }
+    input[type=range]::-webkit-slider-thumb { width: 14px; height: 22px; }
+    input[type=range]::-moz-range-thumb { width: 14px; height: 22px; }
+
+    .seek { height: 10px; margin: 14px 0 8px; }
+    .seek::-webkit-slider-thumb { width: 12px; height: 22px; }
+
+    /* bigger, finger-friendly transport */
+    .transport { gap: 6px; flex-wrap: wrap; }
+    button.t { height: 44px; min-width: 44px; font-size: 16px; flex: 1; }
+    #shuffle, #repeat { font-size: 12px; flex: 1 1 70px; }
+    .spacer { display: none; }
+
+    .pl-head { padding: 8px 10px; font-size: 12px; }
+    .pl-head input.search { font-size: 14px; padding: 6px 8px; }
+    /* playlist fills remaining height on tall phones */
+    .playlist { flex: 1; height: auto; min-height: 200px; font-size: 14px; }
+    .row { padding: 10px 10px; }
+    .row .num { width: 30px; }
+
+    .foot button.t { height: 44px; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
