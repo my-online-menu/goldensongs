@@ -276,6 +276,25 @@
   const REP_LABEL = ['REP', 'REP ∞', 'REP 1'];
 
   // ---------- load sources ----------
+  // Live: read every .mp3 in the repo via the GitHub API (auto-detects new uploads).
+  const GH_REPO = 'my-online-menu/goldensongs';
+  const GH_BRANCH = 'main';
+  async function fromGitHub() {
+    const api = 'https://api.github.com/repos/' + GH_REPO + '/contents/?ref=' + GH_BRANCH;
+    const r = await fetch(api, { headers: { 'Accept': 'application/vnd.github+json' } });
+    if (!r.ok) throw new Error('GitHub API ' + r.status);
+    const files = await r.json();
+    return files
+      .filter(f => f.type === 'file' && /\.mp3$/i.test(f.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(f => ({
+        name: f.name.replace(/\.mp3$/i, ''),
+        url: encodeURIComponent(f.name),   // served from this same Pages site
+        dur: null
+      }));
+  }
+
+  // Fallback: the generated manifest (used locally, or if the API is unreachable).
   function fromManifest() {
     if (!Array.isArray(window.AUTO_PLAYLIST)) return [];
     return window.AUTO_PLAYLIST.map(name => ({
@@ -547,8 +566,14 @@
   window.addEventListener('orientationchange', fit);
 
   // ---------- boot ----------
-  setTracks(fromManifest());
+  setTracks(fromManifest());   // show something immediately
   fit();
+  // then refresh from the live repo listing (auto-picks up newly uploaded songs)
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    fromGitHub()
+      .then(list => { if (list.length) { setTracks(list); fit(); } })
+      .catch(() => { /* keep manifest fallback */ });
+  }
 })();
 </script>
 </body>
