@@ -112,4 +112,5 @@ window.AUTO_PLAYLIST = [
     "W.A.S.P. - Wild Child.mp3",
     "Waste.mp3",
     "Бабек Мамедрзаев - Принцесса.mp3"
+    "hello.mp3"
 ];
