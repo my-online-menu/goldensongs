@@ -357,12 +357,28 @@
   }
 
   // ---------- playback ----------
+  // Loading a new src is async. In the background, play() often rejects because
+  // the media isn't ready yet, which silently stopped playback when switching
+  // tracks from the notification. wantPlay makes the intent sticky so we retry
+  // as soon as the track becomes playable.
+  let wantPlay = false;
+  function tryPlay() {
+    if (!wantPlay) return;
+    const p = audio.play();
+    if (p && p.catch) p.catch(() => { /* retried on canplay */ });
+  }
+  audio.addEventListener('canplay',      tryPlay);
+  audio.addEventListener('loadeddata',   tryPlay);
+  audio.addEventListener('canplaythrough', tryPlay);
+
   function playIndex(i) {
     if (i < 0 || i >= tracks.length) return;
     cur = i;
     const t = tracks[i];
+    wantPlay = true;
     audio.src = t.url;
-    audio.play().catch(()=>{});
+    audio.load();
+    tryPlay();
     setTrackText(t.name);
     markActive();
     $('khz').textContent = '44 kHz';
@@ -392,8 +408,8 @@
 
   if ('mediaSession' in navigator) {
     const ms = navigator.mediaSession;
-    ms.setActionHandler('play',          () => audio.play());
-    ms.setActionHandler('pause',         () => audio.pause());
+    ms.setActionHandler('play',          () => { wantPlay = true; tryPlay(); });
+    ms.setActionHandler('pause',         () => { wantPlay = false; audio.pause(); });
     ms.setActionHandler('previoustrack', () => prev());
     ms.setActionHandler('nexttrack',     () => next(false));
     ms.setActionHandler('stop',          () => stop());
@@ -422,7 +438,7 @@
   });
   function next(auto) {
     if (!tracks.length) return;
-    if (auto && repeat === 2) { audio.currentTime = 0; audio.play(); return; }
+    if (auto && repeat === 2) { audio.currentTime = 0; wantPlay = true; tryPlay(); return; }
     if (shuffle) return playIndex(Math.floor(Math.random() * tracks.length));
     let n = cur + 1;
     if (n >= tracks.length) { if (auto && repeat === 0) { stop(); return; } n = 0; }
@@ -434,7 +450,7 @@
     let p = cur - 1; if (p < 0) p = tracks.length - 1;
     playIndex(p);
   }
-  function stop() { audio.pause(); audio.currentTime = 0; setStatus('stopped'); }
+  function stop() { wantPlay = false; audio.pause(); audio.currentTime = 0; setStatus('stopped'); }
 
   // ---------- display ----------
   function setTrackText(name) {
@@ -475,8 +491,11 @@
   });
 
   // ---------- controls ----------
-  $('play').onclick  = () => { if (cur < 0) playIndex(view[0] ?? 0); else audio.play(); };
-  $('pause').onclick = () => audio.paused ? audio.play() : audio.pause();
+  $('play').onclick  = () => { if (cur < 0) playIndex(view[0] ?? 0); else { wantPlay = true; tryPlay(); } };
+  $('pause').onclick = () => {
+    if (audio.paused) { wantPlay = true; tryPlay(); }
+    else { wantPlay = false; audio.pause(); }
+  };
   $('stop').onclick  = stop;
   $('next').onclick  = () => next(false);
   $('prev').onclick  = prev;
