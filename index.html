@@ -368,7 +368,58 @@
     $('khz').textContent = '44 kHz';
     $('pos').textContent = (i + 1) + ' / ' + tracks.length;
     document.title = t.name + ' — BlackAmp';
+    updateMediaSession(t.name);
   }
+
+  // ---------- Media Session: real media notification + lock-screen controls ----------
+  // Without this, Android treats the page as incidental audio and is far more
+  // likely to kill it in the background.
+  function updateMediaSession(name) {
+    if (!('mediaSession' in navigator)) return;
+    // "Artist - Title" is the common filename shape; split it for nicer metadata
+    const dash = name.indexOf(' - ');
+    const artist = dash > 0 ? name.slice(0, dash) : 'BlackAmp';
+    const title  = dash > 0 ? name.slice(dash + 3) : name;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title, artist, album: 'goldensongs',
+        artwork: [
+          { src: 'Winamp-logo.svg.png', sizes: '512x512', type: 'image/png' }
+        ]
+      });
+    } catch (e) { /* ignore */ }
+  }
+
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession;
+    ms.setActionHandler('play',          () => audio.play());
+    ms.setActionHandler('pause',         () => audio.pause());
+    ms.setActionHandler('previoustrack', () => prev());
+    ms.setActionHandler('nexttrack',     () => next(false));
+    ms.setActionHandler('stop',          () => stop());
+    try {
+      ms.setActionHandler('seekto', d => { if (d.seekTime != null) audio.currentTime = d.seekTime; });
+    } catch (e) { /* not supported everywhere */ }
+    audio.addEventListener('play',  () => ms.playbackState = 'playing');
+    audio.addEventListener('pause', () => ms.playbackState = 'paused');
+    audio.addEventListener('timeupdate', () => {
+      if (ms.setPositionState && audio.duration && isFinite(audio.duration)) {
+        try {
+          ms.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate,
+            position: Math.min(audio.currentTime, audio.duration)
+          });
+        } catch (e) { /* ignore */ }
+      }
+    });
+  }
+
+  // If the tab is backgrounded the AudioContext can get suspended, which silences
+  // playback. Resume it whenever we come back, and whenever playback resumes.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && actx && actx.state === 'suspended') actx.resume();
+  });
   function next(auto) {
     if (!tracks.length) return;
     if (auto && repeat === 2) { audio.currentTime = 0; audio.play(); return; }
@@ -500,8 +551,14 @@
   }
   window.addEventListener('resize', sizeCanvas); sizeCanvas();
 
-  // file:// taints MediaElementSource and mutes output; only route audio when served over http(s)
-  const VIZ_OK = location.protocol === 'http:' || location.protocol === 'https:';
+  // Only route audio through Web Audio when it's safe to do so:
+  //  - file:// taints MediaElementSource and mutes output
+  //  - on mobile, routing through an AudioContext breaks BACKGROUND playback
+  //    (Android suspends the context), so we leave the <audio> element alone
+  //    and fall back to the animated bars. Background playback > live spectrum.
+  const IS_MOBILE = matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const SERVED = location.protocol === 'http:' || location.protocol === 'https:';
+  const VIZ_OK = SERVED && !IS_MOBILE;
   function initAudio() {
     if (actx || !VIZ_OK) return;
     try {
