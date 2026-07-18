@@ -7,6 +7,10 @@
 <title>BlackAmp</title>
 <link rel="icon" type="image/png" href="Winamp-logo.svg.png">
 <link rel="apple-touch-icon" href="Winamp-logo.svg.png">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
   :root {
     --bg: #0a0a0a;
@@ -649,6 +653,14 @@
     fromGitHub()
       .then(list => { if (list.length) { setTracks(list); fit(); } })
       .catch(() => { /* keep manifest fallback */ });
+  }
+
+  // Service worker: offline shell + caches played songs, so a dropped signal
+  // mid-drive doesn't interrupt playback. Also makes the app installable.
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
   }
 })();
 </script>
